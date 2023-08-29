@@ -11,28 +11,30 @@ def main():
     competitors = [cell for cell in ws['A'] if cell.value != '' and cell.value != None]
 
     max_name_length = max(max(len(voter.value) for voter in voters), max(len(competitor.value) for competitor in competitors))
-    scoreboard_width = max_name_length + 14
+    scoreboard_width = max_name_length + 22
     horizontal_line = ' ' + '_' * scoreboard_width + ' '
     dead_space = '|' + ' ' * scoreboard_width + '|'
     header = '|' + '%s' + '|'
-    competitor_scorecard = '| ' + '%s' + '%s' + ' | ' + '%s' + ' |'
+    competitor_scorecard = '| ' + '%s' + ' ' + '%s' + '%s' + ' | ' + '%s' + ' |'
     footer = '|' + '_' * scoreboard_width + '|'
     # `template` has the following string interpolation:
     # - `voter`;
-    # - `competitor`, `vote`, and `running_total` for each competitor.
+    # - `position`, `competitor`, `vote`, and `running_total` for each competitor.
     template = f'{horizontal_line}\n{dead_space}\n{header}\n{footer}\n{dead_space}\n' + f'{competitor_scorecard}\n' * len(competitors) + footer
 
-    running_totals = [0 for competitor in competitors]
+    running_totals = {competitor: 0 for competitor in competitors}
     for i, voter in enumerate(voters):
-        votes = [vote.value for vote in ws[f'{voter.column_letter}'] if vote.value != voter.value]
-        for j in range(len(votes)):
-            if votes[j] == None:
-                votes[j] = ''
-        scoreboard_data = (f'NOW VOTING: {voter.value}'.center(scoreboard_width),)
-        for j in range(len(running_totals)):
-            if type(votes[j]) == int or type(votes[j]) == float:
-                running_totals[j] += votes[j]
-            scoreboard_data += (competitors[j].value.ljust(scoreboard_width - 10), str(votes[j]).rjust(2), str(running_totals[j]).zfill(3))
+        votes = {competitor: ws[f'{voter.column_letter}{competitor.row}'].value for competitor in competitors}
+        for competitor in competitors:
+            if votes[competitor] == None:
+                votes[competitor] = ''
+        scoreboard_data = (f'NOW VOTING: {voter.value} ({i+1}/{len(voters)})'.center(scoreboard_width),)
+        for competitor in competitors:
+            if type(votes[competitor]) == int:
+                running_totals[competitor] += votes[competitor]
+        running_totals = dict(sorted(running_totals.items(), key=lambda x:x[1], reverse=True))
+        for j, competitor in enumerate(running_totals):
+            scoreboard_data += (f'{j + 1}'.zfill(2), competitor.value.ljust(scoreboard_width - 13), str(votes[competitor]).rjust(2), str(running_totals[competitor]).zfill(3))
         scoreboard = template % scoreboard_data
         file = open(Path('Scoreboards', f'{i + 1}'.zfill(2) + f' {voter.value}.txt'), 'w')
         file.write(scoreboard)
